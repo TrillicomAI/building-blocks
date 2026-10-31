@@ -16,6 +16,23 @@ export function loadConfig(env = process.env): Config {
   if (!tokens || Array.isArray(tokens) || typeof tokens !== 'object' || Object.entries(tokens).some(([owner, token]) => !owner || typeof token !== 'string' || token.length < 24)) throw new Error('AUTH_TOKENS must map caller names to tokens of at least 24 characters');
   if (new Set(Object.values(tokens)).size !== Object.keys(tokens).length) throw new Error('AUTH_TOKENS values must be unique');
   if (!['localhost', '127.0.0.1', '::1'].includes(host) && (!Object.keys(tokens).length || env.ALLOW_TRUSTED_NETWORK !== 'true')) throw new Error('Non-loopback binding requires AUTH_TOKENS and ALLOW_TRUSTED_NETWORK=true; use only on a trusted isolated network');
+  // TLS proxy enforcement: when binding non-loopback the operator must declare that
+  // TLS is terminated upstream, either by naming the platform or by asserting a proxy.
+  // Accepted values for PLATFORM_TLS_TERMINATION: openshift, kubernetes, render, true
+  // Alternatively set BEHIND_TLS_PROXY=true for any other reverse-proxy arrangement.
+  // Both are bypassed on loopback (local dev / Docker Desktop single-machine use).
+  const loopback = ['localhost', '127.0.0.1', '::1'].includes(host);
+  if (!loopback) {
+    const platform = (env.PLATFORM_TLS_TERMINATION ?? '').trim().toLowerCase();
+    const behindProxy = env.BEHIND_TLS_PROXY === 'true';
+    const tlsOk = behindProxy || ['openshift', 'kubernetes', 'render', 'true'].includes(platform);
+    if (!tlsOk) throw new Error(
+      'Non-loopback binding requires TLS termination to be declared.\n' +
+      '  Set BEHIND_TLS_PROXY=true if a reverse proxy (nginx, HAProxy, Caddy, etc.) terminates TLS upstream.\n' +
+      '  Set PLATFORM_TLS_TERMINATION=openshift|kubernetes|render if the platform router handles TLS.\n' +
+      '  Do NOT set either flag unless TLS is actually in place — Bearer tokens will be exposed in plaintext.'
+    );
+  }
   const bobEnv: NodeJS.ProcessEnv = {};
   // Service tokens and unrelated credentials never enter the child environment.
   for (const key of ['PATH', 'HOME', 'TMPDIR', 'LANG', 'LC_ALL', 'BOB_API_KEY', 'HTTPS_PROXY', 'HTTP_PROXY', 'NO_PROXY', 'NODE_EXTRA_CA_CERTS']) if (env[key]) bobEnv[key] = env[key];

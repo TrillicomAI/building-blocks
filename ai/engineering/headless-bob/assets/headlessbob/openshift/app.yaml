@@ -41,6 +41,7 @@ spec:
           env:
             - { name: HOST, value: '0.0.0.0' }
             - { name: ALLOW_TRUSTED_NETWORK, value: 'true' }
+            - { name: PLATFORM_TLS_TERMINATION, value: 'openshift' }
             - { name: BOB_ENABLE_CONTINUATION, value: 'true' }
             - { name: MAX_CONCURRENT, value: '1' }
             - { name: MAX_QUEUED, value: '20' }
