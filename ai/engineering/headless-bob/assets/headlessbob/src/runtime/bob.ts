@@ -8,7 +8,8 @@ export class BobRuntime implements Runtime {
   async ready() {
     if (!this.config.bobEnv.BOB_API_KEY) return { ready: false, reason: 'BOB_API_KEY is required for headless Bob' };
     return new Promise<{ ready: boolean; reason?: string }>((resolve) => {
-      const child = spawn(this.config.bobBin, ['--version'], { env: this.config.bobEnv, stdio: ['ignore', 'pipe', 'ignore'], timeout: 5000 });
+      // Render free/small instances often need >5s for the first bob --version spawn.
+      const child = spawn(this.config.bobBin, ['--version'], { env: this.config.bobEnv, stdio: ['ignore', 'pipe', 'ignore'], timeout: 30000 });
       let output = '';
       child.stdout.on('data', (data) => { if (output.length < 4096) output += data.toString(); });
       child.on('error', () => resolve({ ready: false, reason: 'Bob executable is unavailable' }));
