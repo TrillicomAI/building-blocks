@@ -8,10 +8,11 @@ COPY public ./public
 RUN npm run build && npm prune --omit=dev
 
 FROM node:24-bookworm-slim
-RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates git python3 tini \
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates curl git python3 tini \
     && rm -rf /var/lib/apt/lists/*
-COPY vendor/bobshell-2.0.4.tgz /tmp/bobshell.tgz
-RUN echo '10de047ffdc23a50f3e1ef69fad3b6313ff6dda0010589a22efe26b24685254b  /tmp/bobshell.tgz' | sha256sum -c - \
+# Download Bob Shell at build time so Render/git builds do not need vendor/ in the repo.
+RUN curl -fsSL https://s3.us-south.cloud-object-storage.appdomain.cloud/bob-shell/bobshell-2.0.4.tgz -o /tmp/bobshell.tgz \
+    && echo '10de047ffdc23a50f3e1ef69fad3b6313ff6dda0010589a22efe26b24685254b  /tmp/bobshell.tgz' | sha256sum -c - \
     && npm install --prefix /opt/bobshell /tmp/bobshell.tgz --omit=dev \
     && rm /tmp/bobshell.tgz \
     && printf '%s\n' '#!/bin/sh' 'exec env BOBSHELL_NO_RELAUNCH=true /usr/local/bin/node /opt/bobshell/node_modules/bobshell/dist/bob.js "$@"' > /usr/local/bin/bob \
